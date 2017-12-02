@@ -5,33 +5,43 @@
 
 #define MAX_INT 32768
 
-uint8_t read_source(uint16_t *memory);
-void run(uint16_t *memory, uint16_t registers[]);
-size_t _exit(uint16_t *loc);
-size_t _readChar(uint16_t *loc);
-size_t _noop(uint16_t *loc);
+typedef struct {
+	uint16_t memory[MAX_INT];
+	uint16_t registers[8];
+	uint16_t *mem_ptr;
+	void (*instructions[22])();
+} State;
 
-size_t (*instructions[22])();
+State *initialize();
+uint8_t read_source(State *state);
+void run(State *state);
 
+void _exit(State *state);
+void _readChar(State *state);
+void _noop(State *state);
 
 int main(int argc, char *argv[])
 {
-	uint16_t memory[MAX_INT];
-	uint16_t registers[8];
-	registers[0] = 0;
+	State *state = initialize();
+	read_source(state);
 
-	instructions[0] = _exit;
-	instructions[19] = _readChar;
-	instructions[21] = _noop;
-
-	read_source(memory);
-
-	run(memory, registers);
+	run(state);
 
 	return 0;
 }
 
-uint8_t read_source(uint16_t *memory) 
+State *initialize()
+{
+	State *state = (State *) malloc(sizeof(State));
+	state->instructions[0] = _exit;
+	state->instructions[19] = _readChar;
+	state->instructions[21] = _noop;
+	state->mem_ptr = state->memory;
+
+	return state;
+}
+
+uint8_t read_source(State *state) 
 {
 	FILE *input;
 	uint16_t buff;
@@ -42,36 +52,35 @@ uint8_t read_source(uint16_t *memory)
 		exit(-1);
 	}
 	while (fread(&buff, sizeof(uint16_t), 1, input) > 0) {
-		*(memory++) = buff;
+		*(state->mem_ptr++) = buff;
 	}
 	fclose(input);
+	state->mem_ptr = state->memory;
 	
 	return 0;
 }
 
-void run(uint16_t *memory, uint16_t registers[])
+void run(State *state)
 {
 	uint16_t op;
-	uint16_t *loc = memory;
 	while (1) {
-		op = *loc++;
-		loc += (*instructions[op])(loc);
+		op = *state->mem_ptr++;
+		(*state->instructions[op])(state);
 	}
 }
 
-size_t _exit(uint16_t *loc)
+void _exit(State *state)
 {
 	exit(0);
 }
 
-size_t _readChar(uint16_t *loc)
+void _readChar(State *state)
 {
-	char c = (char) *loc;
+	char c = (char) *state->mem_ptr++;
 	printf("%c", c);
-	return 1;
 }
 
-size_t _noop(uint16_t *loc)
+void _noop(State *state)
 {
-	return 0;
+	return;
 }
