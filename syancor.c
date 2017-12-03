@@ -25,13 +25,22 @@ void _set(State *state);
 void _push(State *state);
 void _pop(State *state);
 void _eq(State *state);
-void _add(State *state);
-
+void _gt(State *state);
 void _jmp(State *state);
 void _jt(State *state);
 void _jf(State *state);
+void _add(State *state);
+void _mult(State *state);
+void _mod(State *state);
+void _and(State *state);
+void _or(State *state);
+void _not(State *state);
+void _rmem(State *state);
+void _wmem(State *state);
+void _call(State *state);
+void _ret(State *state);
 
-void _readChar(State *state);
+void _out(State *state);
 
 void _noop(State *state);
 
@@ -53,21 +62,21 @@ State *initialize()
 	state->instructions[2] = _push;
 	state->instructions[3] = _pop;
 	state->instructions[4] = _eq;
-	state->instructions[5] = _noop;
+	state->instructions[5] = _gt;
 	state->instructions[6] = _jmp;
 	state->instructions[7] = _jt;
 	state->instructions[8] = _jf;
 	state->instructions[9] = _add;
-	state->instructions[10] = _noop;
-	state->instructions[11] = _noop;
-	state->instructions[12] = _noop;
-	state->instructions[13] = _noop;
-	state->instructions[14] = _noop;
-	state->instructions[15] = _noop;
-	state->instructions[16] = _noop;
-	state->instructions[17] = _noop;
-	state->instructions[18] = _noop;
-	state->instructions[19] = _readChar;
+	state->instructions[10] = _mult;
+	state->instructions[11] = _mod;
+	state->instructions[12] = _and;
+	state->instructions[13] = _or;
+	state->instructions[14] = _not;
+	state->instructions[15] = _rmem;
+	state->instructions[16] = _wmem;
+	state->instructions[17] = _call;
+	state->instructions[18] = _ret;
+	state->instructions[19] = _out;
 	state->instructions[20] = _noop;
 	state->instructions[21] = _noop;
 	state->mem_ptr = state->memory;
@@ -109,9 +118,9 @@ void run(State *state)
 			free(state);
 			exit(-2);
 		}
-		if (op != 19) {
-			printf("op %d\n", op);
-		}
+		/* if (op != 19) { */
+		/* 	printf("op %d\n", op); */
+		/* } */
 		(*state->instructions[op])(state);
 	}
 }
@@ -223,6 +232,28 @@ void _eq(State *state)
 	state->registers[out_reg] = (val_a == val_b) ? 1 : 0;
 }
 
+void _gt(State *state)
+{
+	uint16_t out_reg, in_a, in_b, val_a, val_b;
+	if ((out_reg = check_reg(state->mem_ptr++, state)) == REG_ERR ||
+	    (in_a = check_val(state->mem_ptr++, state)) == VAL_ERR ||
+	    (in_b = check_val(state->mem_ptr++, state)) == VAL_ERR) {
+		free(state);
+		exit(4);
+	}
+	if (in_a >= MAX_INT) {
+		val_a = state->registers[in_a - MAX_INT];
+	} else {
+		val_a = in_a;
+	}
+	if (in_b >= MAX_INT) {
+		val_b = state->registers[in_b - MAX_INT];
+	} else {
+		val_b = in_b;
+	}
+	state->registers[out_reg] = (val_a > val_b) ? 1 : 0;
+}
+
 void _jmp(State *state)
 {
 	uint16_t val;
@@ -302,7 +333,174 @@ void _add(State *state)
 	state->registers[out_reg] = (val_a + val_b) % MAX_INT;
 }
 
-void _readChar(State *state)
+void _mult(State *state)
+{
+	uint16_t out_reg, in_a, in_b, val_a, val_b;
+	if ((out_reg = check_reg(state->mem_ptr++, state)) == REG_ERR ||
+	    (in_a = check_val(state->mem_ptr++, state)) == VAL_ERR ||
+	    (in_b = check_val(state->mem_ptr++, state)) == VAL_ERR) {
+		free(state);
+		exit(10);
+	}
+	if (in_a >= MAX_INT) {
+		val_a = state->registers[in_a - MAX_INT];
+	} else {
+		val_a = in_a;
+	}
+	if (in_b >= MAX_INT) {
+		val_b = state->registers[in_b - MAX_INT];
+	} else {
+		val_b = in_b;
+	}
+	state->registers[out_reg] = (val_a * val_b) % MAX_INT;
+}
+
+void _mod(State *state)
+{
+	uint16_t out_reg, in_a, in_b, val_a, val_b;
+	if ((out_reg = check_reg(state->mem_ptr++, state)) == REG_ERR ||
+	    (in_a = check_val(state->mem_ptr++, state)) == VAL_ERR ||
+	    (in_b = check_val(state->mem_ptr++, state)) == VAL_ERR) {
+		free(state);
+		exit(11);
+	}
+	if (in_a >= MAX_INT) {
+		val_a = state->registers[in_a - MAX_INT];
+	} else {
+		val_a = in_a;
+	}
+	if (in_b >= MAX_INT) {
+		val_b = state->registers[in_b - MAX_INT];
+	} else {
+		val_b = in_b;
+	}
+	state->registers[out_reg] = val_a % val_b;
+}
+
+void _and(State *state)
+{
+	uint16_t out_reg, in_a, in_b, val_a, val_b;
+	if ((out_reg = check_reg(state->mem_ptr++, state)) == REG_ERR ||
+	    (in_a = check_val(state->mem_ptr++, state)) == VAL_ERR ||
+	    (in_b = check_val(state->mem_ptr++, state)) == VAL_ERR) {
+		free(state);
+		exit(12);
+	}
+	if (in_a >= MAX_INT) {
+		val_a = state->registers[in_a - MAX_INT];
+	} else {
+		val_a = in_a;
+	}
+	if (in_b >= MAX_INT) {
+		val_b = state->registers[in_b - MAX_INT];
+	} else {
+		val_b = in_b;
+	}
+	state->registers[out_reg] = val_a & val_b;
+}
+
+void _or(State *state)
+{
+	uint16_t out_reg, in_a, in_b, val_a, val_b;
+	if ((out_reg = check_reg(state->mem_ptr++, state)) == REG_ERR ||
+	    (in_a = check_val(state->mem_ptr++, state)) == VAL_ERR ||
+	    (in_b = check_val(state->mem_ptr++, state)) == VAL_ERR) {
+		free(state);
+		exit(13);
+	}
+	if (in_a >= MAX_INT) {
+		val_a = state->registers[in_a - MAX_INT];
+	} else {
+		val_a = in_a;
+	}
+	if (in_b >= MAX_INT) {
+		val_b = state->registers[in_b - MAX_INT];
+	} else {
+		val_b = in_b;
+	}
+	state->registers[out_reg] = val_a | val_b;
+}
+
+void _not(State *state) {
+	uint16_t out_reg, val;
+	if ((out_reg = check_reg(state->mem_ptr++, state)) == REG_ERR ||
+	    (val = check_val(state->mem_ptr++, state)) == VAL_ERR) {
+		free(state);
+		exit(14);
+	}
+	// have to mask off most significant bit per specs
+	if (val >= MAX_INT) {
+		state->registers[out_reg] =
+			~state->registers[val - MAX_INT] & 0x7fff;
+	} else {
+		state->registers[out_reg] = ~val & 0x7fff; 
+	}
+}
+
+void _rmem(State *state)
+{
+	uint16_t out_reg, in_addr, val;
+	if ((out_reg = check_reg(state->mem_ptr++, state)) == REG_ERR ||
+	    (in_addr = check_val(state->mem_ptr++, state)) == VAL_ERR) {
+		free(state);
+		exit(15);
+	}
+	if (in_addr >= MAX_INT) {
+		val = state->memory[state->registers[in_addr - MAX_INT]];
+	} else {
+		val = state->memory[in_addr];
+	}
+	state->registers[out_reg] = val;
+}
+
+void _wmem(State *state)
+{
+	uint16_t addr, input_val, val;
+	if ((addr = check_val(state->mem_ptr++, state)) == VAL_ERR ||
+	    (input_val = check_val(state->mem_ptr++, state)) == VAL_ERR) {
+		free(state);
+		exit(16);
+	}
+	if (input_val >= MAX_INT) {
+		val = state->registers[input_val - MAX_INT];
+	} else {
+		val = input_val;
+	}
+	if (addr >= MAX_INT) {
+		state->memory[state->registers[addr - MAX_INT]] = val;
+	} else {
+		state->memory[addr] = val;
+	}
+}
+
+void _call(State *state)
+{
+	uint16_t to_val;
+	if ((to_val = check_val(state->mem_ptr++, state)) == VAL_ERR) {
+		free(state);
+		exit(17);
+	}
+	*state->stack_ptr++ = state->mem_ptr - state->memory;
+	if (to_val >= MAX_INT) {
+		state->mem_ptr =
+			state->memory + state->registers[to_val - MAX_INT];
+	} else {
+		state->mem_ptr = state->memory + to_val;
+	}
+}
+
+void _ret(State *state) {
+	if (state->stack_ptr < state->stack) {
+		fprintf(stderr,
+			"synacor: cannot ret from empty stack - 0x%.4lx",
+			state->mem_ptr - 1 - state->memory);
+		free(state);
+		exit(18);
+	}
+	state->mem_ptr = state->memory + *--state->stack_ptr;
+}
+
+void _out(State *state)
 {
 	char c = (char) *state->mem_ptr++;
 	printf("%c", c);
