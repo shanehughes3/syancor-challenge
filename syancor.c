@@ -12,8 +12,8 @@ typedef struct {
 	uint16_t registers[8];
 	uint16_t *mem_ptr;
 	void (*instructions[22])();
-	uint16_t *stack;
-	uint16_t *STACK_LOW_BOUND;
+	uint16_t stack[MAX_INT];
+	uint16_t *stack_ptr;
 } State;
 
 State *initialize();
@@ -74,6 +74,7 @@ State *initialize()
 	for (int i = 0; i < 8; ++i) {
 		state->registers[i] = 0;
 	}
+	state->stack_ptr = state->stack;
 	return state;
 }
 
@@ -91,7 +92,6 @@ uint16_t read_source(State *state)
 		*(state->mem_ptr++) = buff;
 	}
 	fclose(input);
-	state->stack = state->STACK_LOW_BOUND = state->mem_ptr;
 	state->mem_ptr = state->memory;
 	
 	return 0;
@@ -165,23 +165,29 @@ void _set(State *state)
 
 void _push(State *state)
 {
-	// TODO check for stack overflow
 	uint16_t val;
+	if (state->stack_ptr > state->stack + MAX_INT) {
+		fprintf(stderr,
+			"synacor: stack overflow - 0x%.4lx\n",
+			state->mem_ptr - 1 - state->memory);
+		free(state);
+		exit(2);
+	}
 	if ((val = check_val(state->mem_ptr++, state)) == VAL_ERR) {
 		free(state);
 		exit(2);
 	}
 	if (val >= MAX_INT) {
-		*state->stack++ = state->registers[val - MAX_INT];
+		*state->stack_ptr++ = state->registers[val - MAX_INT];
 	} else {
-		*state->stack++ = val;
+		*state->stack_ptr++ = val;
 	}
 }
 
 void _pop(State *state)
 {
 	uint16_t reg;
-	if (state->stack <= state->STACK_LOW_BOUND) {
+	if (state->stack_ptr < state->stack) {
 		fprintf(stderr,
 			"synacor: cannot pop from empty stack - 0x%.4lx",
 			state->mem_ptr - 1 - state->memory);
@@ -192,7 +198,7 @@ void _pop(State *state)
 		free(state);
 		exit(3);
 	}
-	state->registers[reg] = *state->stack--;
+	state->registers[reg] = *--state->stack_ptr;
 }
 
 void _eq(State *state)
