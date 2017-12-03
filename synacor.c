@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -39,9 +40,8 @@ void _rmem(State *state);
 void _wmem(State *state);
 void _call(State *state);
 void _ret(State *state);
-
 void _out(State *state);
-
+void _in(State *state);
 void _noop(State *state);
 
 int main(int argc, char *argv[])
@@ -77,7 +77,7 @@ State *initialize()
 	state->instructions[17] = _call;
 	state->instructions[18] = _ret;
 	state->instructions[19] = _out;
-	state->instructions[20] = _noop;
+	state->instructions[20] = _in;
 	state->instructions[21] = _noop;
 	state->mem_ptr = state->memory;
 	for (int i = 0; i < 8; ++i) {
@@ -502,8 +502,38 @@ void _ret(State *state) {
 
 void _out(State *state)
 {
-	char c = (char) *state->mem_ptr++;
-	printf("%c", c);
+	uint16_t in, val;
+	if ((in = check_val(state->mem_ptr++, state)) == VAL_ERR) {
+		free(state);
+		exit(19);
+	}
+	if (in >= MAX_INT) {
+		val = state->registers[in - MAX_INT];
+	} else {
+		val = in;
+	}
+	printf("%c", val);
+}
+
+void _in(State *state)
+{
+	static size_t len;
+	static char *buffer = NULL;
+	static int is_set = 0;
+	static char *buffer_ptr;
+	uint16_t out_reg;
+	if ((out_reg = check_reg(state->mem_ptr++, state)) == REG_ERR) {
+		free(state);
+		exit(20);
+	}
+
+	if (!is_set || *buffer_ptr == '\0') {
+		printf("> ");
+		getline(&buffer, &len, stdin);
+		buffer_ptr = buffer;
+		is_set = 1;
+	}
+	state->registers[out_reg] = *buffer_ptr++;
 }
 
 void _noop(State *state)
